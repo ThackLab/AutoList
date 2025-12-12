@@ -264,7 +264,7 @@ elif [ "$1" = "exclude" ]; then
     fi
     
     log "Add this to EXCLUDE_PATTERNS array: \"$2\""
-    echo "Edit ~/My-Projects/dir-harvester and add \"$2\" to EXCLUDE_PATTERNS"
+    echo "Edit the dir-harvester script and add \"$2\" to EXCLUDE_PATTERNS array"
     
 #==============================================================================
 # SHOW STATS

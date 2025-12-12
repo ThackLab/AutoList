@@ -1,126 +1,163 @@
-# Dir Harvester - Installation & Usage Guide
+# Installation Guide
 
-## Quick Start
+## Prerequisites
 
-### 1. Install the script
 ```bash
-# Copy to your projects directory
-sudo cp dir-harvester-fixed /home/mingy/My-Projects/dir-harvester
-sudo chmod +x /home/mingy/My-Projects/dir-harvester
+sudo apt install inotify-tools -y
 ```
 
-### 2. Test manually first
-```bash
-# Run a single scan to test
-/home/mingy/My-Projects/dir-harvester scan
+## Quick Install
 
-# Check stats
-/home/mingy/My-Projects/dir-harvester stats
+### Method 1: Use from Cloned Repo (Easiest)
+```bash
+git clone https://github.com/YOUR_USERNAME/AutoList.git
+cd AutoList
+chmod +x dir-harvester
+./dir-harvester start
 ```
 
-### 3. Start daemon (Option A: Simple)
+### Method 2: Install to ~/bin
 ```bash
-# Start in background
-/home/mingy/My-Projects/dir-harvester start
+# Create bin directory if it doesn't exist
+mkdir -p ~/bin
 
-# Check status
-/home/mingy/My-Projects/dir-harvester status
+# Copy script
+cp dir-harvester ~/bin/
+chmod +x ~/bin/dir-harvester
 
-# Stop when needed
-/home/mingy/My-Projects/dir-harvester stop
+# Add to PATH (if not already - add to ~/.bashrc or ~/.zshrc)
+echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+
+# Use from anywhere
+dir-harvester start
 ```
 
-### 4. Start daemon (Option B: Systemd - Auto-start on boot)
+### Method 3: System-Wide Install
 ```bash
-# Install systemd service
-sudo cp dir-harvester.service /etc/systemd/system/
+sudo cp dir-harvester /usr/local/bin/
+sudo chmod +x /usr/local/bin/dir-harvester
+dir-harvester start
+```
+
+## Setup Auto-Start (Optional)
+
+To start automatically on boot using systemd:
+
+```bash
+# Create service file
+sudo nano /etc/systemd/system/dir-harvester.service
+```
+
+**Paste this (replace USERNAME with your username):**
+```ini
+[Unit]
+Description=AutoList Directory Harvester
+After=network.target
+
+[Service]
+Type=simple
+User=USERNAME
+ExecStart=/home/USERNAME/bin/dir-harvester daemon
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+**Enable and start:**
+```bash
 sudo systemctl daemon-reload
 sudo systemctl enable dir-harvester
 sudo systemctl start dir-harvester
 
 # Check status
 sudo systemctl status dir-harvester
-
-# View logs
-journalctl -u dir-harvester -f
 ```
 
-## Supported Tools
+## First Run
 
-The script automatically detects and parses output from:
-- **Gobuster**: `/admin (Status: 200)`
-- **Dirb**: `==> DIRECTORY:` and `CODE:200` lines  
-- **Feroxbuster**: `200 GET ... http://url/admin`
-- **ffuf**: `admin [Status: 200, Size: 1234]`
-- **Dirsearch**: `[12:34:56] 200 - /admin`
+```bash
+# Test with manual scan
+dir-harvester scan
 
-## File Naming
+# Check stats
+dir-harvester stats
 
-Save your scan outputs with the tool name in the filename:
-- `target-gobuster.txt`
-- `target-dirb.txt`
-- `target-feroxbuster.txt` or `target-ferox.txt`
-- `target-ffuf.txt`
-- `target-dirsearch.txt`
+# Start daemon
+dir-harvester start
 
-**Monitored directories** (searches recursively):
-- `~/ctf/` (and all subdirectories)
-- `~/Desktop/`
-- `~/Downloads/`
-- `~/Documents/`
+# Verify it's running
+dir-harvester status
+```
 
-To add more directories, edit `WATCH_DIRS` array in the script.
+## File Locations
 
-## Output
+After installation, these files will be created:
 
-**Wordlist**: `~/Desktop/found_dirs.txt`
-**Log file**: `~/Desktop/dir-harvester.log`
-**State file**: `~/.dir-harvester-state`
+- **Wordlist**: `~/wordlists/Dir-Harvester.txt`
+- **Log**: `~/.dir-harvester.log`
+- **State**: `~/.dir-harvester-state`
 
-## Excluded Patterns
+The wordlist directory (`~/wordlists/`) will be created automatically on first run.
 
-The script automatically filters out:
-- Static asset directories (css, js, images, fonts, icons)
-- Build directories (node_modules, vendor, dist, build)
-- Version control (.git, .svn)
-- Files with extensions (only keeps directories)
+## Verify Installation
+
+```bash
+# Check if inotify-tools installed
+which inotifywait
+
+# Check if script is executable
+which dir-harvester
+
+# Test run
+dir-harvester status
+```
+
+## Uninstall
+
+```bash
+# Stop daemon
+dir-harvester stop
+
+# Remove script (depending on install method)
+rm ~/bin/dir-harvester
+# OR
+sudo rm /usr/local/bin/dir-harvester
+
+# Remove data files (optional)
+rm ~/wordlists/Dir-Harvester.txt
+rm ~/.dir-harvester.log
+rm ~/.dir-harvester-state
+
+# Remove systemd service (if installed)
+sudo systemctl stop dir-harvester
+sudo systemctl disable dir-harvester
+sudo rm /etc/systemd/system/dir-harvester.service
+sudo systemctl daemon-reload
+```
 
 ## Troubleshooting
 
-### Daemon not starting?
+**Permission denied**
+```bash
+chmod +x dir-harvester
+```
+
+**inotifywait not found**
+```bash
+sudo apt install inotify-tools -y
+```
+
+**Daemon won't start**
 ```bash
 # Check if already running
-pgrep -f "dir-harvester daemon"
+dir-harvester status
 
-# Kill any existing instances
-pkill -f "dir-harvester daemon"
+# Check logs
+tail -f ~/.dir-harvester.log
 
-# Try starting again
-/home/mingy/My-Projects/dir-harvester start
-```
-
-### Not finding directories?
-```bash
-# Run manual scan with verbose output
-/home/mingy/My-Projects/dir-harvester scan
-
-# Check log file
-tail -f ~/Desktop/dir-harvester.log
-
-# Verify file naming matches patterns in monitored directories
-ls ~/ctf/*{gobuster,dirb,ferox,ffuf,dirsearch}*.txt
-ls ~/Desktop/*{gobuster,dirb,ferox,ffuf,dirsearch}*.txt
-ls ~/Downloads/*{gobuster,dirb,ferox,ffuf,dirsearch}*.txt
-```
-
-### Test directory extraction
-```bash
-# Create test file (any monitored directory works)
-echo "==> DIRECTORY: http://test.com/admin/" > ~/Desktop/test-dirb.txt
-
-# Run manual scan
-/home/mingy/My-Projects/dir-harvester scan
-
-# Check if "admin" was added
-grep "admin" ~/Desktop/found_dirs.txt
+# Try manual scan first
+dir-harvester scan
 ```
